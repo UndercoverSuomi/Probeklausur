@@ -16,7 +16,7 @@ export default function SettingsPage() {
 
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [defaultModel, setDefaultModel] = useState("claude-sonnet-4.6");
+  const [defaultModel, setDefaultModel] = useState("gpt-5.4");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 

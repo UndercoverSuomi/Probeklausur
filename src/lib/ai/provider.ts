@@ -80,7 +80,7 @@ export type ModelId = keyof typeof AI_MODELS;
 
 export const MODEL_OPTIONS = Object.values(AI_MODELS);
 
-export const DEFAULT_MODEL: ModelId = "claude-sonnet-4.6";
+export const DEFAULT_MODEL: ModelId = "gpt-5.4";
 
 /**
  * Resolve a model ID to a Vercel AI SDK LanguageModel instance.

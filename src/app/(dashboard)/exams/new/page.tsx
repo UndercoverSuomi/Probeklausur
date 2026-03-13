@@ -155,7 +155,7 @@ function ExamConfigPage() {
       difficulty: "standard",
       mode: "exam",
       timeLimitMinutes: null,
-      modelId: "claude-sonnet-4.6",
+      modelId: "gpt-5.4",
     },
   });
 
