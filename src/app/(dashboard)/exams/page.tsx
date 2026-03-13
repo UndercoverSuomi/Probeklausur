@@ -13,7 +13,9 @@ import {
   AlertCircle,
   CheckCircle2,
   BarChart3,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +94,23 @@ const item = {
 export default function ExamsPage() {
   const [exams, setExams] = useState<ExamRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(e: React.MouseEvent, id: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/exams/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Fehler beim Löschen");
+      setExams((prev) => prev.filter((ex) => ex.id !== id));
+      toast.success("Klausur gelöscht");
+    } catch {
+      toast.error("Klausur konnte nicht gelöscht werden.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -289,6 +308,20 @@ export default function ExamsPage() {
                           </Button>
                         )}
                         <ChevronRight className="h-4 w-4 text-ink-muted group-hover:text-accent transition-colors" />
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(e, exam.id)}
+                          disabled={deletingId === exam.id}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-all hover:bg-incorrect-light hover:text-incorrect disabled:opacity-50"
+                          aria-label="Klausur löschen"
+                          title="Löschen"
+                        >
+                          {deletingId === exam.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                     </CardContent>
                   </Card>

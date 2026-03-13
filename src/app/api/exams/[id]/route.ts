@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/exams/[id] — fetch exam details for display.
@@ -123,4 +123,57 @@ export async function GET(
 
   // Otherwise just return exam overview info
   return NextResponse.json(exam);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: examId } = await params;
+  const supabase = await createServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
+  }
+
+  const service = createServiceClient();
+
+  // Verify ownership
+  const { data: exam } = await service
+    .from("exams")
+    .select("id")
+    .eq("id", examId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!exam) {
+    return NextResponse.json({ error: "Klausur nicht gefunden" }, { status: 404 });
+  }
+
+  // Delete related data
+  // Question attempts (via exam_attempts)
+  const { data: attempts } = await service
+    .from("exam_attempts")
+    .select("id")
+    .eq("exam_id", examId);
+
+  if (attempts && attempts.length > 0) {
+    const attemptIds = attempts.map((a) => a.id);
+    await service.from("question_attempts").delete().in("attempt_id", attemptIds);
+  }
+
+  await service.from("exam_attempts").delete().eq("exam_id", examId);
+  await service.from("exam_questions").delete().eq("exam_id", examId);
+  await service.from("exam_documents").delete().eq("exam_id", examId);
+  await service
+    .from("processing_progress")
+    .delete()
+    .eq("entity_type", "exam")
+    .eq("entity_id", examId);
+  await service.from("exams").delete().eq("id", examId);
+
+  return NextResponse.json({ success: true });
 }
