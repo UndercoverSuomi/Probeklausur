@@ -324,8 +324,9 @@ export default function DocumentsPage() {
                           type="button"
                           onClick={(e) => handleDelete(e, doc.id)}
                           disabled={deletingId === doc.id}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-all hover:bg-incorrect-light hover:text-incorrect group-hover:opacity-100 disabled:opacity-50"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-incorrect-light hover:text-incorrect disabled:opacity-50"
                           aria-label="Dokument löschen"
+                          title="Löschen"
                         >
                           {deletingId === doc.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
