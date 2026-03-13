@@ -141,10 +141,10 @@ export default function ExamDetailPage({
     loadExam();
   }, [loadExam]);
 
-  // Poll while generating
+  // Poll while generating or just created
   useEffect(() => {
-    if (!exam || exam.status !== "generating") return;
-    const interval = setInterval(loadExam, 2000);
+    if (!exam || (exam.status !== "generating" && exam.status !== "created")) return;
+    const interval = setInterval(loadExam, 3000);
     return () => clearInterval(interval);
   }, [exam?.status, loadExam]);
 
@@ -190,7 +190,7 @@ export default function ExamDetailPage({
   const currentStepIndex = generationSteps.findIndex(
     (s) => s.key === (exam.generation_progress?.step || exam.status)
   );
-  const isGenerating = exam.status === "generating";
+  const isGenerating = exam.status === "generating" || exam.status === "created";
   const isReady = exam.status === "ready";
   const isError = exam.status === "error";
 
