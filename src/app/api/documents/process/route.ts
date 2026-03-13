@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { parsePdf } from "@/lib/documents/pdf-parser";
 import { chunkDocument } from "@/lib/documents/chunker";
 import { generateEmbeddings } from "@/lib/documents/embedder";
 import { extractConcepts } from "@/lib/ai/generate";
+
+export const maxDuration = 300; // 5 minutes for processing large PDFs
 
 const EMBED_BATCH_SIZE = 50;
 
@@ -80,9 +82,9 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Start background processing ──
-    // We respond immediately and process in the background.
+    // Use Next.js after() to keep the function alive after the response is sent.
     // The client polls /api/documents/[id] for status updates.
-    const processingPromise = (async () => {
+    after(async () => {
       try {
         // ── Step 1: Download & parse PDF ──
         await updateProgress("parsing", "in_progress");
@@ -251,12 +253,6 @@ export async function POST(request: NextRequest) {
         await updateDocumentStatus("error", { error_message: message });
         await updateProgress("error", "failed", { error: message });
       }
-    })();
-
-    // Don't await — let it run in background
-    // Edge runtime would need waitUntil, but in Node runtime this works
-    processingPromise.catch((err) => {
-      console.error("Unhandled processing error:", err);
     });
 
     return NextResponse.json({ success: true, documentId });
