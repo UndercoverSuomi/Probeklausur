@@ -9,8 +9,8 @@ export async function parsePdf(buffer: ArrayBuffer): Promise<ParsedDocument> {
   const pages: ParsedPage[] = [];
 
   if (result.text) {
-    // unpdf returns full text — split by form feeds or double newlines for page approximation
-    const rawPages = result.text.split(/\f/);
+    // unpdf returns text as string[] (one entry per page)
+    const rawPages = Array.isArray(result.text) ? result.text : [result.text];
 
     for (let i = 0; i < rawPages.length; i++) {
       const text = rawPages[i].trim();
