@@ -109,9 +109,8 @@ export default function ExamsPage() {
         .from("exams")
         .select(
           `
-          id, title, status, mode, difficulty, question_count,
-          time_limit_minutes, created_at,
-          exam_attempts (id, status, score, max_score, percentage, completed_at)
+          id, title, status, config, total_questions, created_at,
+          exam_attempts (id, status, total_score, max_score, percentage, completed_at)
         `
         )
         .eq("user_id", user.id)
@@ -119,10 +118,29 @@ export default function ExamsPage() {
 
       if (examRows) {
         setExams(
-          examRows.map((e: Record<string, unknown>) => ({
-            ...e,
-            attempts: (e.exam_attempts as ExamRow["attempts"]) || [],
-          })) as ExamRow[]
+          examRows.map((e: Record<string, unknown>) => {
+            const cfg = (e.config ?? {}) as Record<string, unknown>;
+            return {
+              id: e.id as string,
+              title: e.title as string,
+              status: e.status as string,
+              mode: (cfg.mode as string) ?? "exam",
+              difficulty: (cfg.difficulty as string) ?? "standard",
+              question_count: (e.total_questions as number) ?? (cfg.questionCount as number) ?? 0,
+              time_limit_minutes: (cfg.timeLimitMinutes as number | null) ?? null,
+              created_at: e.created_at as string,
+              attempts: (
+                (e.exam_attempts as { id: string; status: string; total_score: number | null; max_score: number | null; percentage: number | null; completed_at: string | null }[]) || []
+              ).map((a) => ({
+                id: a.id,
+                status: a.status,
+                score: a.total_score,
+                max_score: a.max_score,
+                percentage: a.percentage,
+                completed_at: a.completed_at,
+              })),
+            };
+          })
         );
       }
       setLoading(false);

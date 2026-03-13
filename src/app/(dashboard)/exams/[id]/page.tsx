@@ -92,19 +92,47 @@ export default function ExamDetailPage({
       .from("exams")
       .select(
         `
-        id, title, status, mode, difficulty, question_count,
-        time_limit_minutes, created_at, generation_progress, questions_meta,
-        exam_attempts (id, status, score, max_score, percentage, started_at, completed_at)
+        id, title, status, config, blueprint, total_questions, total_points,
+        error_message, created_at, updated_at,
+        exam_attempts (id, status, total_score, max_score, percentage, started_at, completed_at)
       `
       )
       .eq("id", id)
       .single();
 
     if (data) {
+      const config = (data.config ?? {}) as Record<string, unknown>;
       setExam({
-        ...data,
-        attempts: ((data as Record<string, unknown>).exam_attempts as ExamDetail["attempts"]) || [],
-      } as ExamDetail);
+        id: data.id,
+        title: data.title,
+        status: data.status,
+        mode: (config.mode as string) ?? "exam",
+        difficulty: (config.difficulty as string) ?? "standard",
+        question_count: data.total_questions ?? (config.questionCount as number) ?? 0,
+        time_limit_minutes: (config.timeLimitMinutes as number | null) ?? null,
+        created_at: data.created_at,
+        generation_progress: undefined,
+        questions_meta: undefined,
+        attempts: (
+          (data as Record<string, unknown>).exam_attempts as {
+            id: string;
+            status: string;
+            total_score: number | null;
+            max_score: number | null;
+            percentage: number | null;
+            started_at: string;
+            completed_at: string | null;
+          }[]
+        )?.map((a) => ({
+          id: a.id,
+          status: a.status,
+          score: a.total_score,
+          max_score: a.max_score,
+          percentage: a.percentage,
+          started_at: a.started_at,
+          completed_at: a.completed_at,
+        })) || [],
+      });
     }
     setLoading(false);
   }, [id]);
