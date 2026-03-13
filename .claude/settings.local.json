@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(zip|pdf\\)$\")",
+      "Bash(find 'D:/coding fun/stockanalysis_claude/src/app' -type f -name *.tsx -o -name *.ts)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)"
+    ]
+  }
+}
