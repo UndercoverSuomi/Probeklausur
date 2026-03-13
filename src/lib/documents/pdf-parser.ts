@@ -1,44 +1,22 @@
 import type { ParsedDocument, ParsedPage } from "@/types/document";
 
 export async function parsePdf(buffer: ArrayBuffer): Promise<ParsedDocument> {
-  // Dynamic import for server-side only
-  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // Use unpdf which works in serverless environments (Vercel)
+  const { extractText } = await import("unpdf");
 
-  const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(buffer),
-    useSystemFonts: true,
-  }).promise;
+  const result = await extractText(new Uint8Array(buffer));
 
   const pages: ParsedPage[] = [];
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
+  if (result.text) {
+    // unpdf returns full text — split by form feeds or double newlines for page approximation
+    const rawPages = result.text.split(/\f/);
 
-    // Build text with proper spacing
-    let lastY: number | null = null;
-    const textParts: string[] = [];
-
-    for (const item of content.items) {
-      if (!("str" in item)) continue;
-      const textItem = item as { str: string; transform: number[] };
-      const currentY = textItem.transform[5];
-
-      // Detect line breaks based on Y position change
-      if (lastY !== null && Math.abs(currentY - lastY) > 2) {
-        textParts.push("\n");
-      } else if (textParts.length > 0 && !textParts[textParts.length - 1].endsWith(" ")) {
-        textParts.push(" ");
+    for (let i = 0; i < rawPages.length; i++) {
+      const text = rawPages[i].trim();
+      if (text.length > 0) {
+        pages.push({ pageNumber: i + 1, text });
       }
-
-      textParts.push(textItem.str);
-      lastY = currentY;
-    }
-
-    const text = textParts.join("").trim();
-
-    if (text.length > 0) {
-      pages.push({ pageNumber: i, text });
     }
   }
 
@@ -47,7 +25,7 @@ export async function parsePdf(buffer: ArrayBuffer): Promise<ParsedDocument> {
     metadata: {
       filename: "",
       fileType: "pdf",
-      pageCount: pdf.numPages,
+      pageCount: result.totalPages ?? pages.length,
     },
   };
 }
@@ -64,7 +42,7 @@ export async function checkPdfTextContent(buffer: ArrayBuffer): Promise<{
   const totalText = result.pages.reduce((acc, p) => acc + p.text.length, 0);
 
   return {
-    hasText: totalText > 100, // Minimal threshold
+    hasText: totalText > 100,
     estimatedTextLength: totalText,
     pageCount: result.metadata.pageCount,
   };
