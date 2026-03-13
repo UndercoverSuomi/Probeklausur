@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Verify all documents exist and belong to user
     const { data: docs, error: docsError } = await supabase
       .from("documents")
-      .select("id, status")
+      .select("id, status, filename")
       .in("id", config.documentIds)
       .eq("user_id", user.id);
 
@@ -64,11 +64,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build exam title from document filenames
+    const docNames = docs
+      .map((d) => d.filename?.replace(/\.pdf$/i, ""))
+      .filter(Boolean);
+    const title =
+      docNames.length > 0
+        ? `Probeklausur — ${docNames.slice(0, 2).join(", ")}${docNames.length > 2 ? ` (+${docNames.length - 2})` : ""}`
+        : `Probeklausur ${new Date().toLocaleDateString("de-DE")}`;
+
     // Create exam record
     const { data: exam, error: examError } = await supabase
       .from("exams")
       .insert({
         user_id: user.id,
+        title,
         status: "created",
         config: {
           questionCount: config.questionCount,
