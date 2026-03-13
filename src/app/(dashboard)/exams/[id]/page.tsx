@@ -87,54 +87,92 @@ export default function ExamDetailPage({
   const [starting, setStarting] = useState(false);
 
   const loadExam = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("exams")
-      .select(
-        `
-        id, title, status, config, blueprint, total_questions, total_points,
-        error_message, created_at, updated_at,
-        exam_attempts (id, status, total_score, max_score, percentage, started_at, completed_at)
-      `
-      )
-      .eq("id", id)
-      .single();
+    try {
+      const supabase = createClient();
 
-    if (data) {
-      const config = (data.config ?? {}) as Record<string, unknown>;
-      setExam({
-        id: data.id,
-        title: data.title,
-        status: data.status,
-        mode: (config.mode as string) ?? "exam",
-        difficulty: (config.difficulty as string) ?? "standard",
-        question_count: data.total_questions ?? (config.questionCount as number) ?? 0,
-        time_limit_minutes: (config.timeLimitMinutes as number | null) ?? null,
-        created_at: data.created_at,
-        generation_progress: undefined,
-        questions_meta: undefined,
-        attempts: (
-          (data as Record<string, unknown>).exam_attempts as {
-            id: string;
-            status: string;
-            total_score: number | null;
-            max_score: number | null;
-            percentage: number | null;
-            started_at: string;
-            completed_at: string | null;
-          }[]
-        )?.map((a) => ({
-          id: a.id,
-          status: a.status,
-          score: a.total_score,
-          max_score: a.max_score,
-          percentage: a.percentage,
-          started_at: a.started_at,
-          completed_at: a.completed_at,
-        })) || [],
-      });
+      const [examResult, progressResult] = await Promise.all([
+        supabase
+          .from("exams")
+          .select(
+            `
+            id, title, status, config, blueprint, total_questions, total_points,
+            error_message, created_at, updated_at,
+            exam_attempts (id, status, score, max_score, percentage, started_at, completed_at)
+          `
+          )
+          .eq("id", id)
+          .single(),
+        supabase
+          .from("processing_progress")
+          .select("step_name, step_status, step_details")
+          .eq("entity_type", "exam")
+          .eq("entity_id", id),
+      ]);
+
+      const data = examResult.data;
+      const progressRows = progressResult.data ?? [];
+
+      if (data) {
+        const config = (data.config ?? {}) as Record<string, unknown>;
+
+        // Determine current generation step from processing_progress table
+        let generationProgress: { step: string; percentage: number } | undefined;
+        if (progressRows.length > 0) {
+          const inProgress = progressRows.find((r) => r.step_status === "in_progress");
+          if (inProgress) {
+            const details = (inProgress.step_details || {}) as Record<string, unknown>;
+            const current = details.current as number | undefined;
+            const total = details.total as number | undefined;
+            const pct = details.percentage as number | undefined;
+            const percentage =
+              pct ?? (current && total ? Math.round((current / total) * 100) : 0);
+            generationProgress = { step: inProgress.step_name as string, percentage };
+          } else {
+            const completed = progressRows.filter((r) => r.step_status === "completed");
+            if (completed.length > 0) {
+              const last = completed[completed.length - 1];
+              generationProgress = { step: last.step_name as string, percentage: 100 };
+            }
+          }
+        }
+
+        setExam({
+          id: data.id,
+          title: data.title,
+          status: data.status,
+          mode: (config.mode as string) ?? "exam",
+          difficulty: (config.difficulty as string) ?? "standard",
+          question_count: data.total_questions ?? (config.questionCount as number) ?? 0,
+          time_limit_minutes: (config.timeLimitMinutes as number | null) ?? null,
+          created_at: data.created_at,
+          generation_progress: generationProgress,
+          questions_meta: undefined,
+          attempts: (
+            (data as Record<string, unknown>).exam_attempts as {
+              id: string;
+              status: string;
+              score: number | null;
+              max_score: number | null;
+              percentage: number | null;
+              started_at: string;
+              completed_at: string | null;
+            }[]
+          )?.map((a) => ({
+            id: a.id,
+            status: a.status,
+            score: a.score,
+            max_score: a.max_score,
+            percentage: a.percentage,
+            started_at: a.started_at,
+            completed_at: a.completed_at,
+          })) || [],
+        });
+      }
+    } catch {
+      // Error loading — "not found" UI will show
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [id]);
 
   useEffect(() => {

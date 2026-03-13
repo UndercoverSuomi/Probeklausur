@@ -82,6 +82,7 @@ function ExamTakePage({
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [savingAnswer, setSavingAnswer] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSavingRef = useRef(false);
 
   // Load exam data
   useEffect(() => {
@@ -114,6 +115,8 @@ function ExamTakePage({
       if (!attemptId || !data) return;
 
       const doSave = async () => {
+        if (isSavingRef.current) return;
+        isSavingRef.current = true;
         setSavingAnswer(true);
         try {
           const res = await fetch(
@@ -143,6 +146,7 @@ function ExamTakePage({
         } catch {
           // Silently fail, answer is still in local state
         } finally {
+          isSavingRef.current = false;
           setSavingAnswer(false);
         }
       };

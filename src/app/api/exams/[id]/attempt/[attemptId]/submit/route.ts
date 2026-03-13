@@ -183,11 +183,15 @@ export async function POST(
             };
           } catch (err) {
             console.error("AI grading failed for question:", questionId, err);
+            // Award partial credit (50%) when grading fails so the user isn't
+            // unfairly penalised for an infrastructure issue
             gradeResult = {
               isCorrect: false,
-              score: 0,
+              score: Math.round(points * 0.5 * 100) / 100,
               maxScore: points,
-              feedback: { error: "Automatische Bewertung fehlgeschlagen" },
+              feedback: {
+                error: "Automatische Bewertung fehlgeschlagen — halbe Punktzahl vergeben",
+              },
             };
           }
           break;

@@ -199,7 +199,7 @@ export async function POST(
       });
     } catch (err) {
       console.error("Grading error:", err);
-      return NextResponse.json({ saved: true, gradeResult: null });
+      return NextResponse.json({ saved: true, gradeResult: null, gradingFailed: true });
     }
   }
 

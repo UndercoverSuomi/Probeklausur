@@ -22,7 +22,8 @@ export async function POST(
 
   // Verify internal call
   const secret = request.headers.get("x-internal-secret");
-  if (secret !== (process.env.INTERNAL_API_SECRET || "internal")) {
+  const expectedSecret = process.env.INTERNAL_API_SECRET;
+  if (!expectedSecret || secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

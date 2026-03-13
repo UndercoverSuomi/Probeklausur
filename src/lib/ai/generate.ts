@@ -30,6 +30,9 @@ import type { BlueprintItem } from "./schemas/blueprint";
 /**
  * Generate with retry and structured output.
  */
+// Per-call timeout: 90 seconds per AI generation attempt
+const AI_CALL_TIMEOUT_MS = 90_000;
+
 async function generateWithRetry<T>(
   system: string,
   prompt: string,
@@ -49,12 +52,15 @@ async function generateWithRetry<T>(
             ? `${prompt}\n\nDein vorheriger Versuch hatte Validierungsfehler: ${lastError.message}. Bitte korrigiere diese.`
             : prompt,
         schema,
+        abortSignal: AbortSignal.timeout(AI_CALL_TIMEOUT_MS),
       });
 
       return result.object;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       console.error(`Generation attempt ${attempt + 1} failed:`, lastError.message);
+      // Don't retry on timeout — it will just timeout again
+      if (lastError.name === "TimeoutError" || lastError.name === "AbortError") break;
     }
   }
 

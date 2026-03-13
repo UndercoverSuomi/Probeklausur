@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     const examConfig = config;
 
     after(async () => {
-      const service = createServiceClient();
+      let service: ReturnType<typeof createServiceClient>;
 
       async function updateProgress(
         stepName: string,
@@ -166,6 +166,7 @@ export async function POST(request: NextRequest) {
       }
 
       try {
+        service = createServiceClient();
         const documentIds = examConfig.documentIds;
 
         // Load concepts
@@ -223,9 +224,11 @@ export async function POST(request: NextRequest) {
 
         for (let i = 0; i < blueprint.items.length; i++) {
           const item = blueprint.items[i];
+          const percentage = Math.round(((i + 1) / blueprint.items.length) * 100);
           await updateProgress("generating", "in_progress", {
             current: i + 1,
             total: blueprint.items.length,
+            percentage,
           });
 
           try {
@@ -289,8 +292,8 @@ export async function POST(request: NextRequest) {
               ""
             );
             qualityScore = validation.qualityScore;
-          } catch {
-            /* skip */
+          } catch (validationErr) {
+            console.warn(`Validation failed for question ${i}:`, validationErr);
           }
 
           const points =

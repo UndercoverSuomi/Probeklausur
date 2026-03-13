@@ -34,11 +34,12 @@ export async function GET(
     );
   }
 
-  // Load exam config
+  // Load exam config — verify ownership
   const { data: exam } = await supabase
     .from("exams")
     .select("*")
     .eq("id", examId)
+    .eq("user_id", user.id)
     .single();
 
   if (!exam) {

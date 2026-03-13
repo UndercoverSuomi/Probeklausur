@@ -153,8 +153,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Klausur nicht gefunden" }, { status: 404 });
   }
 
-  // Delete related data
-  // Question attempts (via exam_attempts)
+  // Delete related data in dependency order (children before parent)
   const { data: attempts } = await service
     .from("exam_attempts")
     .select("id")
@@ -162,18 +161,33 @@ export async function DELETE(
 
   if (attempts && attempts.length > 0) {
     const attemptIds = attempts.map((a) => a.id);
-    await service.from("question_attempts").delete().in("attempt_id", attemptIds);
+    const { error: qaError } = await service
+      .from("question_attempts")
+      .delete()
+      .in("attempt_id", attemptIds);
+    if (qaError) console.error("Failed to delete question_attempts:", qaError);
   }
 
-  await service.from("exam_attempts").delete().eq("exam_id", examId);
-  await service.from("exam_questions").delete().eq("exam_id", examId);
-  await service.from("exam_documents").delete().eq("exam_id", examId);
+  const { error: attError } = await service.from("exam_attempts").delete().eq("exam_id", examId);
+  if (attError) console.error("Failed to delete exam_attempts:", attError);
+
+  const { error: qError } = await service.from("exam_questions").delete().eq("exam_id", examId);
+  if (qError) console.error("Failed to delete exam_questions:", qError);
+
+  const { error: edError } = await service.from("exam_documents").delete().eq("exam_id", examId);
+  if (edError) console.error("Failed to delete exam_documents:", edError);
+
   await service
     .from("processing_progress")
     .delete()
     .eq("entity_type", "exam")
     .eq("entity_id", examId);
-  await service.from("exams").delete().eq("id", examId);
+
+  const { error: examDelError } = await service.from("exams").delete().eq("id", examId);
+  if (examDelError) {
+    console.error("Failed to delete exam:", examDelError);
+    return NextResponse.json({ error: "Klausur konnte nicht gelöscht werden" }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }
